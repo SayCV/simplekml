@@ -1,17 +1,17 @@
 """
-Copyright 2011-2015 Kyle Lancaster
+Copyright 2011-2016 Kyle Lancaster
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
+Simplekml is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Lesser General Public License for more details.
 
-You should have received a copy of the GNU General Public License
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Contact me at kyle.lan@gmail.com
@@ -2341,7 +2341,8 @@ class GxTrack(Geometry):
         for when in self.whens:
             buf.append("<when>{0}</when>".format(when))
         for angle in self.gxangles:
-            buf.append("<gx:angle>{0}</gx:angle>".format(angle))
+            angle_str = ' '.join(map(str, angle))
+            buf.append("<gx:angles>{0}</gx:angles>".format(angle_str))
         for gxcoord in self.gxcoords:
             buf.append("<gx:coord>{0}</gx:coord>".format(gxcoord.__str__().replace(',', ' ')))
         buf.append(super(GxTrack, self).__str__())
