@@ -1,6 +1,4 @@
-**SIMPLEKML** is a python package which enables you to generate KML with as little effort as possible.
-
-Visit http://pypi.python.org/pypi/simplekml/ to download the latest version.
+Simplekml is a python package which enables you to generate KML with as little effort as possible.
 
 At the time of making this package nothing was available (at least I could not find anything) that could create KML files easily. You needed a lot of bloated code to even create a simple point. This is understandable because the KML standard is quite extensive, but what if you just work with the simple elements of KML like Document, Folder, Point, LineString and Polygon? This package supports those elements and everything documented in the KML Reference. With simplekml creating a KML file containing a point as simple as::
 
@@ -9,4 +7,7 @@ At the time of making this package nothing was available (at least I could not f
     kml.newpoint(name="Kirstenbosch", coords=[(18.432314,-33.988862)])
     kml.save("botanicalgarden.kml")
 
-See the http://www.simplekml.com for usage and reference.
+See the Homepage_ for usage, documentation and a reference or visit the Repository_ for the source code and to log bug reports.
+
+.. _Homepage: http://www.simplekml.com/
+.. _Repository: https://bitbucket.org/KyleLancaster/simplekml

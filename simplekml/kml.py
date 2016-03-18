@@ -1,17 +1,17 @@
 """
-Copyright 2011-2015 Kyle Lancaster
+Copyright 2011-2016 Kyle Lancaster
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
+Simplekml is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Lesser General Public License for more details.
 
-You should have received a copy of the GNU General Public License
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Contact me at kyle.lan@gmail.com
@@ -262,6 +262,10 @@ class Kml(Kmlable):
 
     def kml(self, format=True):
         """Returns the kml as a string or "prettyprinted" if `format = True`.
+        
+        .. note::
+            Setting `format = False` will produce smaller files, as well as
+            decrease the memory required while processing the kml.
 
         PrettyPrinted Example (default)::
 
@@ -311,6 +315,10 @@ class Kml(Kmlable):
 
         The KML is saved to a file in one long string if `format=False` else it
         gets saved "prettyprinted" (as formatted xml). This works the same as :func:`simplekml.Kml.kml`
+        
+        .. note::
+            Setting `format = False` will produce smaller files, as well as
+            decrease the memory required while processing the kml.
 
         Usage::
 
