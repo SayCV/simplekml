@@ -10,7 +10,7 @@ formatter.get_style_defs('.highlight')
 
 file_path, file_name = os.path.split(os.path.abspath(__file__))
 
-folders = ['Examples', 'Tutorials']
+folders = ['examples', 'tutorials']
 
 kml = simplekml.Kml()
 kml.document = simplekml.Folder(name="Samples Index")
@@ -44,7 +44,7 @@ for folder in folders:
                         lines += line
             html = highlight(lines, PythonLexer(), formatter)
             netlink.description += html
-            netlink.link.href = "http://simplekml.googlecode.com/hg/samples/{1}/{0}.kml".format(name.replace(" ", "%20"), folder.lower())
+            netlink.link.href = "https://bitbucket.org/KyleLancaster/simplekml/raw/tip/samples/{1}/{0}.kml".format(name.replace(" ", "%20"), folder.lower())
 
 kml.save(os.path.splitext(__file__)[0] + ".kml")
 

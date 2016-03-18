@@ -1,17 +1,17 @@
 """
-Copyright 2011-2015 Kyle Lancaster
+Copyright 2011-2016 Kyle Lancaster
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
+Simplekml is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Lesser General Public License for more details.
 
-You should have received a copy of the GNU General Public License
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Contact me at kyle.lan@gmail.com
@@ -89,7 +89,7 @@ class Feature(Kmlable):
 
     @property
     def id(self):
-        """The id string."""
+        """The id string (read only)."""
         return self._id
 
     @property
@@ -402,15 +402,30 @@ class Feature(Kmlable):
 
     def __str__(self):
         buf = []
+        
         for stylemap in self._stylemaps:
             self._addstyle(stylemap.normalstyle)
             self._addstyle(stylemap.highlightstyle)
         str = '<{0} id="{1}">'.format(self.__class__.__name__, self._id)
         buf.append(str)
+        
+
         for style in self._styles:
-            buf.append(style.__str__())
+            if Kmlable._compiling:
+                if style.id not in Kmlable._currentroot._processedstyles:
+                    buf.append(style.__str__())
+                    Kmlable._currentroot._processedstyles.append(style.id)
+            else:
+                buf.append(style.__str__())
+        
         for stylemap in self._stylemaps:
-            buf.append(stylemap.__str__())
+            if Kmlable._compiling:
+                if stylemap.id not in Kmlable._currentroot._processedstyles:
+                    buf.append(stylemap.__str__())
+                    Kmlable._currentroot._processedstyles.append(stylemap.id)
+            else:
+                buf.append(stylemap.__str__())
+    
         buf.append(super(Feature, self).__str__())
         for folder in self._folders:
             buf.append(folder.__str__())
@@ -751,7 +766,7 @@ class Geometry(Kmlable):
 
     @property
     def id(self):
-        """The id string."""
+        """The id string (read only)."""
         return self._id
 
     @property
@@ -1198,6 +1213,7 @@ class Point(PointGeometry):
         for lon in range(2):  # Generate longitude values
             for lat in range(2): # Generate latitude values
                pnt = kml.newpoint(name='Point: {0}{0}'.format(lon,lat))
+               pnt.coords = [(lon, lat)] 
                pnt.style = style
         kml.save("Point Shared Style.kml")
     """
@@ -2325,7 +2341,8 @@ class GxTrack(Geometry):
         for when in self.whens:
             buf.append("<when>{0}</when>".format(when))
         for angle in self.gxangles:
-            buf.append("<gx:angle>{0}</gx:angle>".format(angle))
+            angle_str = ' '.join(map(str, angle))
+            buf.append("<gx:angles>{0}</gx:angles>".format(angle_str))
         for gxcoord in self.gxcoords:
             buf.append("<gx:coord>{0}</gx:coord>".format(gxcoord.__str__().replace(',', ' ')))
         buf.append(super(GxTrack, self).__str__())

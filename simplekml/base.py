@@ -1,17 +1,17 @@
 """
-Copyright 2011-2015 Kyle Lancaster
+Copyright 2011-2016 Kyle Lancaster
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
+Simplekml is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Lesser General Public License for more details.
 
-You should have received a copy of the GNU General Public License
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Contact me at kyle.lan@gmail.com
@@ -20,16 +20,16 @@ Contact me at kyle.lan@gmail.com
 import os
 import cgi
 import xml.dom.minidom
+import warnings
 from simplekml.makeunicode import u
 
 class Kmlable(object):
     """Enables a subclass to be converted into KML."""
-
-    _images = []
-    _kmz = False
-    _parse = True
+    
+    _currentroot = None
+    _compiling = False
     _namespaces = ['xmlns="http://www.opengis.net/kml/2.2"', 'xmlns:gx="http://www.google.com/kml/ext/2.2"']
-
+    
     def __init__(self):
         try:
             from collections import OrderedDict
@@ -39,30 +39,42 @@ class Kmlable(object):
 
     def __str__(self):
         """This is where the magic happens."""
+        parsetext = True
+        outputkmz = False
+        
+        if Kmlable._compiling:
+            parsetext = Kmlable._currentroot._parsetext
+            outputkmz = Kmlable._currentroot._outputkmz            
+        
         buf = []
         for var, val in self._kml.items():
             if val is not None:  # Exclude all variables that are None
                 if var.endswith("_"):
                     buf.append(u"{0}".format(val))  # Use the variable's __str__ as is
                 else:
-                    if var in ['name', 'description', 'text', 'linkname', 'linkdescription', 'message', 'change', 'create', 'delete'] and Kmlable._parse: # Parse value for HTML and convert
+                    if var in ['name', 'description', 'text', 'linkname', 'linkdescription', 'message', 'change', 'create', 'delete', 'link'] and parsetext: # Parse value for HTML and convert
                         val = Kmlable._chrconvert(val)
-                    elif (var == 'href' and os.path.exists(val) and Kmlable._kmz == True)\
-                            or (var == 'targetHref' and os.path.exists(val) and Kmlable._kmz == True): # Check for images
-                        Kmlable._addimage(val)
+                    elif (var == 'href' and os.path.exists(val) and outputkmz == True)\
+                            or (var == 'targetHref' and os.path.exists(val) and outputkmz == True): # Check for images
+                        Kmlable._currentroot._foundimages.append(val)
                         val = os.path.join('files', os.path.split(val)[1]).replace('\\', '/')
+                        val = Kmlable._chrconvert(val)
+                    elif (var in ['href', 'targetHref']):
+                        val = Kmlable._chrconvert(val)
                     buf.append(u("<{0}>{1}</{0}>").format(var, val))  # Enclose the variable's __str__ with its name
                     # Add namespaces
-                    if var.startswith("atom:") and 'xmlns:atom="http://www.w3.org/2005/Atom"' not in Kmlable._namespaces:
-                        Kmlable._namespaces.append('xmlns:atom="http://www.w3.org/2005/Atom"')
-                    elif var.startswith("xal:") and 'xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"' not in Kmlable._namespaces:
-                        Kmlable._namespaces.append('xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"')
+                    if Kmlable._compiling:
+                        if var.startswith("atom:") and 'xmlns:atom="http://www.w3.org/2005/Atom"' not in Kmlable._currentroot._namespaces:
+                            Kmlable._currentroot._namespaces.append('xmlns:atom="http://www.w3.org/2005/Atom"')
+                        elif var.startswith("xal:") and 'xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"' not in Kmlable._currentroot._namespaces:
+                            Kmlable._currentroot._namespaces.append('xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"')
+                    else:
+                        if var.startswith("atom:") and 'xmlns:atom="http://www.w3.org/2005/Atom"' not in Kmlable._namespaces:
+                            Kmlable._currentroot.append('xmlns:atom="http://www.w3.org/2005/Atom"')
+                        elif var.startswith("xal:") and 'xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"' not in Kmlable._namespaces:
+                            Kmlable._currentroot.append('xmlns:xal="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0"')
+                    
         return "".join(buf)
-
-    @classmethod
-    def _parsetext(cls, parse=True):
-        """Sets whether text elements are escaped."""
-        Kmlable._parse = parse
 
     @classmethod
     def _chrconvert(cls, text):
@@ -80,28 +92,9 @@ class Kmlable(object):
         else:
             endtext = cgi.escape(text)
         return endtext
-
-    @classmethod
-    def _addimage(cls, image):
-        Kmlable._images.append(image)
-
-    @classmethod
-    def _getimages(cls):
-        return set(Kmlable._images)
-
-    @classmethod
-    def _clearimages(cls):
-        Kmlable._images = []
-
-    @classmethod
-    def _setkmz(cls, kmz=True):
-        Kmlable._kmz = kmz
-
-    @classmethod
-    def _getnamespaces(cls):
-        """Return the namespaces as a string."""
-        return " ".join(Kmlable._namespaces)
-
+    
+    def addfile(self, path):
+        raise NotImplementedError("This method is no longer available for this class. The addfile method may only be called from the Kml class (since version 1.2.8)")
 
 class Vector2(object):
     """Abstract class representing a vector.
@@ -268,13 +261,15 @@ class KmlElement(xml.dom.minidom.Element):
     @classmethod
     def patch(cls):
         """Patch xml.dom.minidom.Element to use KmlElement instead."""
-        cls._original_element = xml.dom.minidom.Element
-        xml.dom.minidom.Element = KmlElement
+        if xml.dom.minidom.Element != KmlElement: 
+            cls._original_element = xml.dom.minidom.Element 
+            xml.dom.minidom.Element = KmlElement
 
     @classmethod
     def unpatch(cls):
         """Unpatch xml.dom.minidom.Element to use the Element class used last."""
-        xml.dom.minidom.Element = cls._original_element
+        if xml.dom.minidom.Element == KmlElement:
+            xml.dom.minidom.Element = cls._original_element
 
     def writexml(self, writer, indent="", addindent="", newl=""):
         """If the element only contains a single string value then don't add white space around it."""
