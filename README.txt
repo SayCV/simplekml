@@ -7,5 +7,7 @@ At the time of making this package nothing was available (at least I could not f
     kml.newpoint(name="Kirstenbosch", coords=[(18.432314,-33.988862)])
     kml.save("botanicalgarden.kml")
 
-See the http://www.simplekml.com for usage and reference. 
-Visit http://pypi.python.org/pypi/simplekml/ to download the latest version.
+See the Homepage_ for usage, documentation and a reference or visit the Repository_ for the source code and to log bug reports.
+
+.. _Homepage: http://www.simplekml.com/
+.. _Repository: https://bitbucket.org/KyleLancaster/simplekml
