@@ -1,17 +1,17 @@
 """
-Copyright 2011-2015 Kyle Lancaster
+Copyright 2011-2016 Kyle Lancaster
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
+Simplekml is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU Lesser General Public License for more details.
 
-You should have received a copy of the GNU General Public License
+You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Contact me at kyle.lan@gmail.com
@@ -28,7 +28,7 @@ from simplekml.makeunicode import u
 from simplekml.networklinkcontrol import NetworkLinkControl
 
 
-class Kml(object):
+class Kml(Kmlable):
     """The main class that represents a KML file.
 
     This class represents a KML file, and the compilation of the KML file will
@@ -51,9 +51,42 @@ class Kml(object):
     """
 
     def __init__(self, **kwargs):
+        super(Kml, self).__init__()
         self._feature = Document(**kwargs)
         self._networklinkcontrol = None
         self._hint = None
+        self._parsetext = True
+        self._outputkmz = False
+        self._images = []
+        self._foundimages = []
+        self._namespaces = ['xmlns="http://www.opengis.net/kml/2.2"', 'xmlns:gx="http://www.google.com/kml/ext/2.2"']
+        self._processedstyles = []
+        
+    def __str__(self):
+        return "<Root KML object>"
+
+    def _getnamespaces(self):
+        """Return the namespaces as a string."""
+        return " ".join(self._namespaces)
+    
+    def addfile(self, path):
+        """Adds an file to a KMZ and returns the path contained inside of the KMZ (files/...)
+
+        This is useful for including images in a KMZ that are referenced from description balloons, as these files
+        are not automatically included in a KMZ.
+
+        Usage::
+
+            import simplekml
+            kml = simplekml.Kml()
+            path = kml.addfile("a/path/to/somefile.file")
+            pnt = pnt.newpoint()
+            pnt.description = '<img src="' + path +'" alt="picture" width="400" height="300" align="left" />'
+
+        *New in version 1.2.0*
+        """
+        self._images.append(path)
+        return os.path.join('files', os.path.split(path)[1]).replace("\\", "/")
 
     @property
     def features(self):
@@ -190,9 +223,11 @@ class Kml(object):
     @check(Container, True)
     def document(self, doc):
         self._feature = doc
-
+        
     def _genkml(self, format=True):
         """Returns the kml as a string or "prettyprinted" if format = True."""
+        Kmlable._compiling = True
+        self._processedstyles = []
         kml_str = ""
         if self._feature is not None:
             kml_str = self._feature.__str__()
@@ -203,13 +238,15 @@ class Kml(object):
             hint = ' hint="{0}"'.format(self._hint)
         else:
             hint = ''
-        xml_str = u("<kml {0}{2}>{1}{3}</kml>").format(Kmlable._getnamespaces(), kml_str, hint, networklinkcontrol_str)
+        xml_str = u("<kml {0}{2}>{1}{3}</kml>").format(self._getnamespaces(), kml_str, hint, networklinkcontrol_str)
         if format:
            KmlElement.patch()
            kml_str = xml.dom.minidom.parseString(xml_str.encode("utf-8"))
            KmlElement.unpatch()
+           Kmlable._compiling = False
            return kml_str.toprettyxml(indent="    ", newl="\n", encoding="UTF-8").decode("utf-8")
         else:
+            Kmlable._compiling = False
             return xml_str
 
     def parsetext(self, parse=True):
@@ -221,10 +258,14 @@ class Kml(object):
 
         *Changed in version 1.1.0*
         """
-        Kmlable._parsetext(parse)
+        self._parsetext = parse
 
     def kml(self, format=True):
         """Returns the kml as a string or "prettyprinted" if `format = True`.
+        
+        .. note::
+            Setting `format = False` will produce smaller files, as well as
+            decrease the memory required while processing the kml.
 
         PrettyPrinted Example (default)::
 
@@ -265,7 +306,8 @@ class Kml(object):
             <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Document id="feat_1"><Placemark id="feat_2"><name>A Point</name><Point id="geom_0"><coordinates>1.0,2.0,0.0</coordinates></Point></Placemark></Document></kml>
 
         """
-        Kmlable._setkmz(False)
+        Kmlable._currentroot = self
+        self._outputkmz = False
         return self._genkml(format)
 
     def save(self, path, format=True):
@@ -273,6 +315,10 @@ class Kml(object):
 
         The KML is saved to a file in one long string if `format=False` else it
         gets saved "prettyprinted" (as formatted xml). This works the same as :func:`simplekml.Kml.kml`
+        
+        .. note::
+            Setting `format = False` will produce smaller files, as well as
+            decrease the memory required while processing the kml.
 
         Usage::
 
@@ -281,7 +327,8 @@ class Kml(object):
             kml.save("Saving.kml")
             #kml.save("Saving.kml", False)  # or this
         """
-        Kmlable._setkmz(False)
+        Kmlable._currentroot = self
+        self._outputkmz = False
         out = self._genkml(format)
         f = codecs.open(path, 'wb', 'utf-8')
         try:
@@ -302,14 +349,16 @@ class Kml(object):
             kml.savekmz("Saving.kml")
             #kml.savekmz("Saving.kml", False)  # or this
         """
-        Kmlable._setkmz()
+        Kmlable._currentroot = self
+        self._outputkmz = True
         out = self._genkml(format).encode('utf-8')
         kmz = zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED)
         kmz.writestr("doc.kml", out)
-        for image in Kmlable._getimages():
+        for image in self._images:
+            kmz.write(image, os.path.join('files', os.path.split(image)[1]))
+        for image in self._foundimages:
             kmz.write(image, os.path.join('files', os.path.split(image)[1]))
         kmz.close()
-        Kmlable._clearimages()
 
     def newdocument(self, **kwargs):
         """
@@ -461,22 +510,3 @@ class Kml(object):
     @networklinkcontrol.setter
     def networklinkcontrol(self, networklinkcontrol):
         self._networklinkcontrol = networklinkcontrol
-
-    def addfile(self, path):
-        """Adds an file to a KMZ and returns the path contained inside of the KMZ (files/...)
-
-        This is useful for including images in a KMZ that are referenced from description balloons, as these files
-        are not automatically included in a KMZ.
-
-        Usage::
-
-            import simplekml
-            kml = simplekml.Kml()
-            path = kml.addfile("a/path/to/somefile.file")
-            pnt = pnt.newpoint()
-            pnt.description = '<img src="' + path +'" alt="picture" width="400" height="300" align="left" />'
-
-        *New in version 1.2.0*
-        """
-        Kmlable._addimage(path)
-        return os.path.join('files', os.path.split(path)[1]).replace("\\", "/")
